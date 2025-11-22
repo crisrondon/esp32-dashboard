@@ -42,7 +42,7 @@
     .values {
       display: flex;
       gap: 16px;
-      justify-content: space-between;
+      justify-content:space-between;
       margin-bottom: 16px;
     }
     .chip {
@@ -68,35 +68,65 @@
       color: #9ca3af;
       margin-top: 12px;
     }
+    .error {
+      color: #f97373;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Monitor de Ambiente</h1>
-    <p class="subtitle">ESP32 + DHT11 + Azure Static Web Apps</p>
+    <p class="subtitle">Datos reales desde ESP32 → Azure Functions</p>
 
     <div class="values">
       <div class="chip">
         <div class="label">Temperatura</div>
-        <!-- Valores de ejemplo, puedes cambiarlos -->
-        <div id="temp" class="value">24.3 &deg;C</div>
+        <div id="temp" class="value">-- &deg;C</div>
       </div>
       <div class="chip">
         <div class="label">Humedad</div>
-        <div id="hum" class="value">48.0 %</div>
+        <div id="hum" class="value">-- %</div>
       </div>
     </div>
 
-    <div class="footer" id="time">
-      Prototipo IoT en la nube con Microsoft Azure.
+    <div id="time" class="footer">
+      Esperando datos desde Azure...
     </div>
   </div>
 
-  <!--
-    Nota:
-    Ahora mismo los datos son de ejemplo.
-    Más adelante aquí podrías añadir JavaScript para leer datos reales
-    desde una API de Azure (Function, Storage, etc.).
-  -->
+  <script>
+    // 👉 Pega aquí la URL de tu función SIN &temp ni &hum
+    const functionUrlBase = "https://dashboard-esp32-eahjaga5f2cjhvfv.canadacentral-01.azurewebsites.net/api/lectura?code=EdtR1aviY53groNFIZ39bX7ZDqAlCZlutzFo1ja9ff1-AzFuNGn5HA==";
+
+    async function cargarDatos() {
+      const timeEl = document.getElementById("time");
+      try {
+        const resp = await fetch(functionUrlBase + "&mode=get");
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        const data = await resp.json();
+
+        if (data.temperatura === undefined || data.humedad === undefined) {
+          timeEl.textContent = "Aún no hay datos desde el ESP32.";
+          return;
+        }
+
+        document.getElementById("temp").innerHTML =
+          parseFloat(data.temperatura).toFixed(1) + " &deg;C";
+        document.getElementById("hum").innerHTML =
+          parseFloat(data.humedad).toFixed(1) + " %";
+        timeEl.textContent = "Última actualización: " + data.timestamp;
+      } catch (e) {
+        console.error(e);
+        timeEl.textContent = "Error cargando datos desde Azure";
+        timeEl.classList.add("error");
+      }
+    }
+
+    // Cargar al entrar y luego cada 5 segundos
+    cargarDatos();
+    setInterval(cargarDatos, 5000);
+  </script>
 </body>
 </html>
